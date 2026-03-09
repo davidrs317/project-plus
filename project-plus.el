@@ -209,6 +209,7 @@ If COMINT is t, it will run the compilation buffer under `comint-mode'"
 ;;;###autoload
 (defun project-plus-test ()
   "Execute function referred to by the `project-plus-test-function' variable."
+  (interactive)
   (funcall project-plus-test-function))
 
 (provide 'project-plus)

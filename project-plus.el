@@ -132,6 +132,15 @@ This variable is set to t by default."
   :group 'project-plus
   :type 'boolean)
 
+;;;###autoload
+(defcustom project-plus-test-function 'project-plus-test--function
+  "Dynamically adjust function called when running `project-plus-test'.
+It is by default set to a default function that will run the command set in
+`project-plus-test-command', but can be reset to run any function based on the
+user's desires."
+  :group 'project-plus
+  :type 'function)
+
 (defun project-plus-read-configure-command (command)
   "This is a wrapper function around `read-shell-command'.
 Function prompts the user in the minibuffer for the command they want to use to
@@ -182,8 +191,7 @@ If COMINT is t, it will run the compilation buffer under `comint-mode'"
   (setq-default compilation-directory default-directory)
   (compilation-start command comint))
 
-;;;###autoload
-(defun project-plus-test (command &optional comint)
+(defun project-plus-test--function (command &optional comint)
   "Execute `project-plus-test-command' or COMMAND to test a project.
 If COMINT is t, it will run the compilation buffer under `comint-mode'"
   (interactive
@@ -197,6 +205,11 @@ If COMINT is t, it will run the compilation buffer under `comint-mode'"
 					 compilation-save-buffers-predicate)
   (setq-default compilation-directory default-directory)
   (compilation-start command comint))
+
+;;;###autoload
+(defun project-plus-test ()
+  "Execute function referred to by the `project-plus-test-function' variable."
+  (funcall 'project-plus-test-function))
 
 (provide 'project-plus)
 

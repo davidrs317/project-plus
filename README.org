@@ -238,7 +238,7 @@ If COMINT is t, it will run the compilation buffer under `comint-mode'"
 (defun project-plus-test ()
   "Execute function referred to by the `project-plus-test-function' variable."
   (interactive)
-  (funcall project-plus-test-function))
+  (call-interactively project-plus-test-function))
 #+end_src
 ** Project Provision
 End the project and declare it here at the bottom of the file

@@ -49,6 +49,7 @@
 ;;; Code:
 
 (require 'compile)
+(require 'project)
 
 (defgroup project-plus nil
   "This group contains small extensions to the project.el package.
@@ -203,8 +204,10 @@ If COMINT is t, it will run the compilation buffer under `comint-mode'"
 	(consp current-prefix-arg)))
   (save-some-buffers (not compilation-ask-about-save)
 					 compilation-save-buffers-predicate)
-  (setq-default compilation-directory default-directory)
-  (compilation-start command comint))
+  ;; (setq-default compilation-directory default-directory)
+  ;; (compilation-start command comint)
+  (let ((default-directory (project-root (project-current t))))
+	(compilation-start command comint)))
 
 ;;;###autoload
 (defun project-plus-test ()

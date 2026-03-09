@@ -63,10 +63,12 @@ Create a header containing FILENAME, DESCRIPTION, lexical binding cookie, COPYRI
 * Implementation
 ** Requrired modules and start of code section
 This project depends on ~compile.el~. To ensure that all necessary variables are present upon loading, it will pull in ~compile.el~ at the top-level.
+In addition, this package depends on some functionality from the ~project.el~ package so that will be ~require~'d as well to ensure that all functionality is pulled in.
 #+begin_src elisp :lexical t
 ;;; Code:
 
 (require 'compile)
+(require 'project)
 #+end_src
 ** Group Creation
 ~project-plus~ will be contained in a subgroup of ~project~ named ~project-plus~ in order to be clear about the relationship between the two packages
@@ -231,8 +233,10 @@ If COMINT is t, it will run the compilation buffer under `comint-mode'"
 	(consp current-prefix-arg)))
   (save-some-buffers (not compilation-ask-about-save)
 					 compilation-save-buffers-predicate)
-  (setq-default compilation-directory default-directory)
-  (compilation-start command comint))
+  ;; (setq-default compilation-directory default-directory)
+  ;; (compilation-start command comint)
+  (let ((default-directory (project-root (project-current t))))
+	(compilation-start command comint)))
 
 ;;;###autoload
 (defun project-plus-test ()

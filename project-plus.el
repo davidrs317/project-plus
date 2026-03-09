@@ -1,0 +1,203 @@
+;; project-plus.el --- Extend `project' with configure, test, and run functionality -*- lexical-binding: t; -*-
+
+;; Copyright (C) 2026 David Sullivan
+
+;; Author: David Sullivan <devel@sullatrix.us>
+;; Created: 6 Mar 2026
+;; Version: 0.1
+;; Keywords: project, configure, run, test
+;; URL: https://github.com/davidrs317/project-plus
+;; Package-Requires: ((project "0.11.1"))
+
+;; This file is not part of GNU Emacs.
+
+;; This program is free software: you can redistribute it and/or modify it under
+;; the terms of the GNU General Public License as published by the Free Software
+;; Foundation (FSF), either version 3 of the License, or (at the option of the
+;; reader) any later version.
+
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+;; details.
+
+;; A copy of the GNU General Public License should have been received along with
+;; this program. If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+;; This package provides some small extensions to the `project.el' library.
+;; Mainly, this package seeks to utilize the native `compile' facilities in
+;; in order to support configuring, running, and testing a project alongside
+;; `project.el''s built-in support for compiling a project.
+;;
+;; To support this functionality, `project-plus' will define a `project-plus'
+;; group with the following functions:
+;; 1. `project-plus-configure'
+;; 2. `project-plus-run'
+;; 3. `project-plus-test'
+;; I believe the function names are self explanatory, but feedback is welcome.
+;; In order to facilitate the functionality these functions seek to provide, the
+;; `project-plus' group will additionally define the following variables exposed
+;; to the `customize' interface:
+;; 1. `project-plus-configure-command'
+;; 2. `project-plus-run-command'
+;; 3. `project-plus-test-command'
+;; The way this is being envisioned upon writing is that all of these commands
+;; will be some form of shell command to run in the `comint' buffer created by
+;; the `compile' command.
+
+;;; Code:
+
+(require 'compile)
+
+(defgroup project-plus nil
+  "This group contains small extensions to the project.el package.
+These extension aim to maintain the parent package's simplicity."
+  :group 'project
+  :prefix "project-plus-")
+
+;;;###autoload
+(defcustom project-plus-configure-command ""
+  "Command to execute in order to configure a project.
+The semantic intent is for this to be used to for calls to perform environment
+or repo setup but can be used for anything that would be useful to run in an
+ephemeral environment like a `comint' buffer.
+
+The default value is an empty string."
+  :group 'project-plus
+  :type 'string)
+
+;;;###autoload
+(defcustom project-plus-run-command ""
+  "Command to execute in order to run a project.
+The semantic intent behind this variable is to call whatever command is
+necessary to start running a project. There is no mechanism to ensure that is
+how it is used and as a result it can be used for anything a `comint' buffer can
+be used for.
+
+The default value is an empty string."
+  :group 'project-plus
+  :type 'string)
+
+;;;###autoload
+(defcustom project-plus-test-command ""
+  "Command to execute in order to test a project.
+Similarly to the other command variables in this package
+\(see `project-plus-configure-command' and `project-plus-run-command'\), the
+semantic intent is for this command to be used to call whatever
+unit/integration/regression/etc. test runner your project uses but it can be
+used for anything that can run in a `comint' buffer
+
+The default value is an empty string."
+  :group 'project-plus
+  :type 'string)
+
+;;;###autoload
+(defcustom project-plus-read-configure-command t
+  "Variable used to determine if `project-plus-configure' should take user input.
+
+If this variable is set to nil, the current value of
+`project-plus-configure-command' will be run for `project-plus-configure'.
+If this variable is set to t, the current value of
+`project-plus-configure-command' will be placed into the minibuffer and editable
+ by the user.
+
+This variable is set to t by default."
+  :group 'project-plus
+  :type 'boolean)
+
+;;;###autoload
+(defcustom project-plus-read-test-command t
+  "Variable used to determine if `project-plus-test' should take user input.
+
+If this variable is set to nil, the current value of
+`project-plus-test-command' will be run for `project-plus-test'.
+If this variable is set to t, the current value of `project-plus-test' will be
+placed into the minibuffer and editable by the user.
+
+This variable is set to t by default."
+  :group 'project-plus
+  :type 'boolean)
+
+;;;###autoload
+(defcustom project-plus-read-run-command t
+  "Variable used to determine if `project-plus-run' should take user input.
+
+If this variable is set to nil, the current value of `project-plus-run-command'
+will be run for `project-plus-run'. If this variable is set to t, the current
+value of `project-plus-run' will be placed into the minibuffer and editable by
+the user.
+
+This variable is set to t by default."
+  :group 'project-plus
+  :type 'boolean)
+
+(defun project-plus-read-configure-command (command)
+  "This is a wrapper function around `read-shell-command'.
+Function prompts the user in the minibuffer for the command they want to use to
+configure their project. It will fill the minibuffer with COMMAND by default."
+  (read-shell-command "Project configuration command: " command))
+
+(defun project-plus-read-test-command (command)
+  "This is a wrapper function around `read-shell-command'.
+Function prompts the user in the minibuffer for the command they want to use to
+test their project. It will fill the minibuffer with COMMAND by default."
+  (read-shell-command "Project test command: " command))
+
+(defun project-plus-read-run-command (command)
+  "This is a wrapper function around `read-shell-command'.
+Function prompts the user in the minibuffer for the command they want to use to
+run their project. It will fill the minibuffer with COMMAND by default."
+  (read-shell-command "Project run command: " command))
+
+;;;###autoload
+(defun project-plus-configure (command &optional comint)
+  "Execute `project-plus-configure-command' or COMMAND to configure a project.
+If COMINT is t, it will run the compilation buffer under `comint-mode'."
+  (interactive
+   (list
+	(let ((command (eval project-plus-configure-command t)))
+	  (if (or project-plus-read-configure-command current-prefix-arg)
+		  (project-plus-read-configure-command command)
+		command))
+	(consp current-prefix-arg)))
+  (save-some-buffers (not compilation-ask-about-save)
+					 compilation-save-buffers-predicate)
+  (setq-default compilation-directory default-directory)
+  (compilation-start command comint))
+
+;;;###autoload
+(defun project-plus-run (command &optional comint)
+  "Execute `project-plus-run-command' or COMMAND to run a project.
+If COMINT is t, it will run the compilation buffer under `comint-mode'"
+  (interactive
+   (list
+	(let ((command (eval project-plus-run-command t)))
+	  (if (or project-plus-read-run-command current-prefix-arg)
+		  (project-plus-read-run-command command)
+		command))
+	(consp current-prefix-arg)))
+  (save-some-buffers (not compilation-ask-about-save)
+					 compilation-save-buffers-predicate)
+  (setq-default compilation-directory default-directory)
+  (compilation-start command comint))
+
+;;;###autoload
+(defun project-plus-test (command &optional comint)
+  "Execute `project-plus-test-command' or COMMAND to test a project.
+If COMINT is t, it will run the compilation buffer under `comint-mode'"
+  (interactive
+   (list
+	(let ((command (eval project-plus-test-command t)))
+	  (if (or project-plus-read-test-command current-prefix-arg)
+		  (project-plus-read-run-command command)
+		command))
+	(consp current-prefix-arg)))
+  (save-some-buffers (not compilation-ask-about-save)
+					 compilation-save-buffers-predicate)
+  (setq-default compilation-directory default-directory)
+  (compilation-start command comint))
+
+(provide 'project-plus)
+
+;;; project-plus.el ends here
